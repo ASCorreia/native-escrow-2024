@@ -3,7 +3,7 @@ use solana_program::{
     account_info::AccountInfo, declare_id, entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey
 };
 
-declare_id!("6J554jK5EfW93vNhrqisuCxgiRMtRK5PsVhGT5BJtq5H");
+declare_id!("LdAWh3nDWt1TepA9UVDeiMQifkFDoqSfoikNPe3zpnt");
 
 mod state;
 mod instructions;

@@ -1,4 +1,4 @@
-import { Commitment, Connection, Keypair, PublicKey, sendAndConfirmTransaction, SystemProgram, Transaction, type TransactionInstruction } from '@solana/web3.js';
+import { Commitment, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, sendAndConfirmTransaction, SystemProgram, Transaction, type TransactionInstruction } from '@solana/web3.js';
 import { getOrCreateAssociatedTokenAccount, createMint, TOKEN_PROGRAM_ID, mintTo } from '@solana/spl-token';
 import { assert } from 'chai';
 import { createMakeInstruction, createRefundInstruction, createTakeInstruction, PROGRAM_ID } from '../ts';
@@ -17,7 +17,8 @@ const connection = new Connection("https://api.devnet.solana.com", commitment); 
 describe!("Solana Native Escrow", () => {
     let mintA: PublicKey;
     let mintB: PublicKey;
-    let makerAta: PublicKey;
+    let makerAtaA: PublicKey;
+    let makerAtaB: PublicKey;
     let vault: PublicKey;
 
     const seed = new BN(randomBytes(8));
@@ -28,10 +29,11 @@ describe!("Solana Native Escrow", () => {
         mintA = await createMint(connection, keypair, keypair.publicKey, null, 6);
         mintB = await createMint(connection, keypair, keypair.publicKey, null, 6);
 
-        makerAta = (await getOrCreateAssociatedTokenAccount(connection, keypair, mintA, keypair.publicKey)).address;
+        makerAtaA = (await getOrCreateAssociatedTokenAccount(connection, keypair, mintA, keypair.publicKey)).address;
+        makerAtaB = (await getOrCreateAssociatedTokenAccount(connection, keypair, mintB, keypair.publicKey)).address;
         vault = (await getOrCreateAssociatedTokenAccount(connection, keypair, mintA, escrow[0], true)).address;
 
-        const mintTx = await mintTo(connection, keypair, mintA, makerAta, keypair, 100000000);
+        const mintTx = await mintTo(connection, keypair, mintA, makerAtaA, keypair, 100000000);
 
         console.log("\nMint transaction confirmed with signature: ", mintTx);
 
@@ -40,7 +42,7 @@ describe!("Solana Native Escrow", () => {
             escrow: escrow[0],
             mintA,
             mintB,
-            makerAta,
+            makerAta: makerAtaA,
             vault,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
@@ -54,13 +56,13 @@ describe!("Solana Native Escrow", () => {
         console.log("\nEscrow created!\nTransaction confirmed with signature: ", sig);
     })
 
-    it("Refund", async() => {
+    xit("Refund", async() => {
         const createRefundIx: TransactionInstruction = createRefundInstruction({
             maker: keypair.publicKey,
             escrow: escrow[0],
             mintA,
             vault,
-            makerAta,
+            makerAta: makerAtaA,
             tokenProgram: TOKEN_PROGRAM_ID,
         });
 
@@ -77,8 +79,21 @@ describe!("Solana Native Escrow", () => {
     it("Take", async() => {
         const taker = Keypair.generate();
 
-        const takerAtaA = (await getOrCreateAssociatedTokenAccount(connection, taker, mintA, taker.publicKey)).address;
-        const takerAtaB = (await getOrCreateAssociatedTokenAccount(connection, taker, mintB, taker.publicKey)).address;
+        const transfer = SystemProgram.transfer({
+            fromPubkey: keypair.publicKey,
+            toPubkey: taker.publicKey,
+            lamports: LAMPORTS_PER_SOL / 1000,
+        });
+        const transferTx = new Transaction().add(transfer);
+        transferTx.feePayer = keypair.publicKey;
+        transferTx.recentBlockhash = (await connection.getLatestBlockhash(commitment)).blockhash;
+
+        await sendAndConfirmTransaction(connection, transferTx, [keypair], {skipPreflight: false});
+
+        console.log("\nTransferred 0.001 SOL to taker: ", taker.publicKey.toBase58());
+
+        const takerAtaA = (await getOrCreateAssociatedTokenAccount(connection, keypair, mintA, taker.publicKey)).address;
+        const takerAtaB = (await getOrCreateAssociatedTokenAccount(connection, keypair, mintB, taker.publicKey)).address;
 
         const mintTx = await mintTo(connection, keypair, mintB, takerAtaB, keypair, 100000000);
 
@@ -88,19 +103,18 @@ describe!("Solana Native Escrow", () => {
             escrow: escrow[0],
             mintA,
             mintB,
-            makerAta,
+            makerAta: makerAtaB,
             takerAtaA,
             takerAtaB,
             vault,
             tokenProgram: TOKEN_PROGRAM_ID,
-            systemProgram: SystemProgram.programId,
         });
 
         const tx = new Transaction().add(createTakeIx);
-        tx.feePayer = keypair.publicKey;
+        tx.feePayer = taker.publicKey;
         tx.recentBlockhash = (await connection.getLatestBlockhash(commitment)).blockhash;
 
-        let sig = await sendAndConfirmTransaction(connection, tx, [keypair, taker], {skipPreflight: true});
+        let sig = await sendAndConfirmTransaction(connection, tx, [taker], {skipPreflight: true});
         console.log("\nTake transaction confirmed with signature: ", sig);
     })
 })

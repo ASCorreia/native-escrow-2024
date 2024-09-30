@@ -69,11 +69,6 @@ export function createTakeInstruction(accounts: createTakeInstructionAccounts): 
                 isSigner: false,
                 isWritable: false,
             },
-            {
-                pubkey: accounts.systemProgram,
-                isSigner: false,
-                isWritable: false,
-            },
         ],
         data: Buffer.from([0x1]),
     });
