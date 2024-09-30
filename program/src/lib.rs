@@ -1,4 +1,4 @@
-use instructions::{process_make_instruction, process_refund_instruction, EscrowInstruction};
+use instructions::{process_make_instruction, process_refund_instruction, process_take_instruction, EscrowInstruction};
 use solana_program::{
     account_info::AccountInfo, declare_id, entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey
 };
@@ -29,8 +29,8 @@ pub fn process_instruction(
 
     match EscrowInstruction::try_from(instruction_discriminant[0]).unwrap() {
         EscrowInstruction::MakeInstruction => process_make_instruction(accounts, instruction_inner_data)?,
+        EscrowInstruction::TakeInstruction => process_take_instruction(accounts, instruction_data)?,
         EscrowInstruction::RefundInstruction => process_refund_instruction(accounts, instruction_data)?,
-        _ => todo!(),
     }
     
     Ok(())

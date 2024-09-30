@@ -66,7 +66,7 @@ pub fn process_make_instruction(accounts: &[AccountInfo], instruction_data: &[u8
     };
 
     let decimals = spl_token::state::Mint::unpack(&mint_a.try_borrow_data()?)?.decimals;
-    let transfer_ix = transfer_checked(token_program.key, maker_ata.key, mint_a.key, maker_ata.key, maker.key, &[maker.key], amount, decimals)?;
+    let transfer_ix = transfer_checked(token_program.key, maker_ata.key, mint_a.key, vault.key, maker.key, &[maker.key], amount, decimals)?;
     invoke(
         &transfer_ix,
         &[maker_ata.clone(), mint_a.clone(), vault.clone(), maker.clone()]

@@ -1,27 +1,31 @@
+use std::borrow::BorrowMut;
+
 use borsh::BorshDeserialize;
-use solana_program::{account_info::AccountInfo, bpf_loader_upgradeable::close, program::invoke, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey};
+use solana_program::{account_info::AccountInfo, msg, program::invoke_signed, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey};
 use spl_token::instruction::transfer_checked;
 
 use crate::{error::EscrowError, loaders::load_signer, Escrow};
 
 pub fn process_refund_instruction(accounts: &[AccountInfo<'_>], _instruction_data: &[u8]) -> Result<(), ProgramError> {
 
-    let [maker, escrow, mint, vault, maker_ata, token_program, system_program] = accounts
+    msg!("Loading Accounts");
+
+    let [maker, escrow, mint, vault, maker_ata, token_program] = accounts
     else {
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-    let escrow_pda = Escrow::try_from_slice(&escrow.try_borrow_mut_data()?)?; 
-    let escrow_key = Pubkey::find_program_address(&[b"escrow", maker.key.as_ref(), escrow_pda.seed.to_be_bytes().as_ref()], &crate::ID).0;
+    let escrow_data = Escrow::try_from_slice(&escrow.try_borrow_mut_data()?)?; 
+    let escrow_pda = Pubkey::find_program_address(&[b"escrow", maker.key.as_ref(), escrow_data.seed.to_le_bytes().as_ref()], &crate::ID);
 
     load_signer(maker)?;
 
-    if escrow.key.ne(&escrow_key) {
+    if escrow.key.ne(&escrow_pda.0) {
         return Err(EscrowError::EscrowAccountMismatch.into());
     }
     
     let vault_data = spl_token::state::Account::unpack(&vault.try_borrow_mut_data()?)?;
-    if vault_data.mint.ne(mint.key) && vault_data.owner.ne(&escrow_key) {
+    if vault_data.mint.ne(mint.key) && vault_data.owner.ne(&escrow_pda.0) {
         return Err(EscrowError::EscrowAccountMismatch.into());
     }
 
@@ -31,17 +35,16 @@ pub fn process_refund_instruction(accounts: &[AccountInfo<'_>], _instruction_dat
     }
 
     let decimals = spl_token::state::Mint::unpack(&mint.try_borrow_mut_data()?)?.decimals;
-    let transfer_ix = transfer_checked(token_program.key, vault.key, mint.key, maker_ata.key, maker.key, &[maker.key], vault_data.amount, decimals)?;
-    invoke(
+    let transfer_ix = transfer_checked(token_program.key, vault.key, mint.key, maker_ata.key, escrow.key, &[], vault_data.amount, decimals)?;
+    invoke_signed(
         &transfer_ix, 
-        &[vault.clone(), maker_ata.clone(), maker.clone(), token_program.clone()]
+        &[vault.clone(), mint.clone(), maker_ata.clone(), escrow.clone()],
+        &[&[b"escrow", maker.key.as_ref(), escrow_data.seed.to_le_bytes().as_ref(), &[escrow_pda.1]]]
     )?;
 
-    let close_account = close(&escrow_key, maker.key, &escrow_key);
-    invoke(
-        &close_account,
-         &[escrow.clone(), maker.clone(), system_program.clone()]
-    )?;
+    let escrow_balance = escrow.lamports();
+    *escrow.lamports().borrow_mut() = 0;
+    *maker.lamports().borrow_mut() += escrow_balance;
 
     Ok(())
 }
