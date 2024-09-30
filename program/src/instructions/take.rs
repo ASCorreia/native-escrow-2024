@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+
 use borsh::BorshDeserialize;
 use solana_program::{account_info::AccountInfo, program::{invoke, invoke_signed}, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey};
 
@@ -78,6 +80,10 @@ pub fn process_take_instruction(accounts: &[AccountInfo<'_>], _instruction_data:
         &[vault.clone(), mint_a.clone(), taker_ata_a.clone(), escrow.clone(), token_program.clone()],
         &[&[b"escrow", maker.key.as_ref(), escrow_data.seed.to_le_bytes().as_ref(), &[escrow_pda.1]]]
     )?;
+
+    let escrow_balance = escrow.lamports();
+    *escrow.lamports().borrow_mut() = 0;
+    *maker.lamports().borrow_mut() += escrow_balance;
 
     Ok(())
 }
