@@ -12,7 +12,7 @@ const keypair = Keypair.fromSecretKey(new Uint8Array(wallet));
 
 //Create a Solana devnet connection
 const commitment: Commitment = "confirmed";
-const connection = new Connection("https://api.devnet.solana.com", commitment); //http://127.0.0.1:8899
+const connection = new Connection("http://127.0.0.1:8899", commitment); //https://api.devnet.solana.com
 
 describe!("Solana Native Escrow", () => {
     let mintA: PublicKey;
@@ -26,6 +26,7 @@ describe!("Solana Native Escrow", () => {
     const escrow = PublicKey.findProgramAddressSync([Buffer.from("escrow"), keypair.publicKey.toBuffer(), seed.toArrayLike(Buffer, "le", 8)], PROGRAM_ID);
 
     it("Make", async() => {
+        await connection.requestAirdrop(keypair.publicKey, LAMPORTS_PER_SOL);
         mintA = await createMint(connection, keypair, keypair.publicKey, null, 6);
         mintB = await createMint(connection, keypair, keypair.publicKey, null, 6);
 
