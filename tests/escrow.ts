@@ -26,7 +26,8 @@ describe!("Solana Native Escrow", () => {
     const escrow = PublicKey.findProgramAddressSync([Buffer.from("escrow"), keypair.publicKey.toBuffer(), seed.toArrayLike(Buffer, "le", 8)], PROGRAM_ID);
 
     it("Make", async() => {
-        await connection.requestAirdrop(keypair.publicKey, LAMPORTS_PER_SOL);
+        //let airdrop = await connection.requestAirdrop(keypair.publicKey, LAMPORTS_PER_SOL);
+        console.log("SOL balance: ", (await connection.getBalance(keypair.publicKey)));
         mintA = await createMint(connection, keypair, keypair.publicKey, null, 6);
         mintB = await createMint(connection, keypair, keypair.publicKey, null, 6);
 
@@ -53,7 +54,7 @@ describe!("Solana Native Escrow", () => {
         tx.feePayer = keypair.publicKey;
         tx.recentBlockhash = (await connection.getLatestBlockhash(commitment)).blockhash;
 
-        let sig = await sendAndConfirmTransaction(connection, tx, [keypair], {skipPreflight: false});
+        let sig = await sendAndConfirmTransaction(connection, tx, [keypair], {skipPreflight: true});
         console.log("\nEscrow created!\nTransaction confirmed with signature: ", sig);
     })
 

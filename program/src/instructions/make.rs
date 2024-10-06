@@ -35,8 +35,10 @@ pub fn process_make_instruction(accounts: &[AccountInfo], instruction_data: &[u8
     };
 
     //let data = bytemuck::try_pod_read_unaligned::<Escrow>(instruction_data).map_err(|_| ProgramError::InvalidInstructionData)?;
-    let seed: u64 = u64::try_from_slice(&instruction_data[..SEED_OFFSET])?;
-    let amount = u64::try_from_slice(&instruction_data[SEED_OFFSET..AMOUNT_OFFSET])?;
+    //let seed = u64::try_from_slice(&instruction_data[..SEED_OFFSET])?;
+    let seed: u64 = bytemuck::try_pod_read_unaligned::<u64>(&instruction_data[..SEED_OFFSET]).map_err(|_| ProgramError::InvalidInstructionData)?;
+    //let amount = u64::try_from_slice(&instruction_data[SEED_OFFSET..AMOUNT_OFFSET])?;
+    let amount = bytemuck::try_pod_read_unaligned::<u64>(&instruction_data[SEED_OFFSET..AMOUNT_OFFSET]).map_err(|_| ProgramError::InvalidInstructionData)?;
 
     let escrow_pda = Pubkey::find_program_address(&[b"escrow", maker.key.as_ref(), seed.to_le_bytes().as_ref()], &ID);
 
@@ -53,7 +55,7 @@ pub fn process_make_instruction(accounts: &[AccountInfo], instruction_data: &[u8
         &[&[b"escrow", maker.key.as_ref(), seed.to_le_bytes().as_ref(), &[escrow_pda.1]]]
     )?;
 
-    Escrow::init(escrow, seed, *maker.key, *mint_a.key, *mint_b.key, amount, escrow_pda.1)?;
+    Escrow::init(escrow, seed, *maker.key, *mint_a.key, *mint_b.key, amount)?;
 
     match token_program.key {
         &spl_token::ID => {
