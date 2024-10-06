@@ -27,6 +27,7 @@ use crate::{
     ID
 };
 
+#[inline]
 pub fn process_make_instruction(accounts: &[AccountInfo], instruction_data: &[u8]) -> Result<(), ProgramError> {
     let [maker, escrow, mint_a, mint_b, maker_ata, vault, token_program, _system_program] =
         accounts

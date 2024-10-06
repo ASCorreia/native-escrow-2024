@@ -16,6 +16,7 @@ pub struct Escrow {
 impl Escrow {
     pub const LEN: usize = 8 + 32 + 32 + 32 + 8 + 1;
 
+    #[inline]
     pub fn init(escrow: &AccountInfo, seed: u64, maker: Pubkey, mint_a: Pubkey, mint_b: Pubkey, amount: u64) -> ProgramResult {
 
         let mut escrow_account = Self::try_from_slice(&escrow.try_borrow_mut_data()?)?;
