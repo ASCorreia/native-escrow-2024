@@ -1,16 +1,9 @@
 use borsh::BorshDeserialize;
 use solana_program::{
-    account_info::AccountInfo,
-    program::{
+    account_info::AccountInfo, program::{
         invoke, 
         invoke_signed
-    }, 
-    program_error::ProgramError, 
-    program_pack::Pack, 
-    pubkey::Pubkey, 
-    rent::Rent, 
-    system_instruction::create_account, 
-    sysvar::Sysvar
+    }, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent, system_instruction::create_account, system_program, sysvar::Sysvar
 };
 use spl_token::instruction::transfer_checked;
 
@@ -18,13 +11,7 @@ use crate::{
     constants::{
         AMOUNT_OFFSET, 
         SEED_OFFSET
-    }, 
-    loaders::{
-        load_pda, 
-        load_signer
-    }, 
-    Escrow, 
-    ID
+    }, error::EscrowError, Escrow, ID
 };
 
 pub fn process_make_instruction(accounts: &[AccountInfo], instruction_data: &[u8]) -> Result<(), ProgramError> {
@@ -38,9 +25,18 @@ pub fn process_make_instruction(accounts: &[AccountInfo], instruction_data: &[u8
     let amount = u64::try_from_slice(&instruction_data[SEED_OFFSET..AMOUNT_OFFSET])?;
     let escrow_pda = Pubkey::find_program_address(&[b"escrow", maker.key.as_ref(), seed.to_le_bytes().as_ref()], &ID);
 
-    load_signer(maker)?;
+    if !maker.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
 
-    load_pda(escrow, escrow_pda.0)?;
+    if escrow.key.ne(&escrow_pda.0) {
+        return Err(EscrowError::EscrowAccountMismatch.into());
+    }
+
+    if escrow.owner.ne(&system_program::ID) {
+        return Err(ProgramError::AccountAlreadyInitialized);
+    }
+
 
     let minimum_balance = Rent::get()?.minimum_balance(Escrow::LEN);
     let init_ix = create_account(maker.key, escrow.key, minimum_balance, Escrow::LEN as u64, &crate::ID);

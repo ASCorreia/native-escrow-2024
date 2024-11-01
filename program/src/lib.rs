@@ -8,7 +8,6 @@ declare_id!("LdAWh3nDWt1TepA9UVDeiMQifkFDoqSfoikNPe3zpnt");
 mod state;
 mod instructions;
 mod error;
-mod loaders;
 mod constants;
 
 use state::*;

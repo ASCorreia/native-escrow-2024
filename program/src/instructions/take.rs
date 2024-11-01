@@ -3,7 +3,7 @@ use std::borrow::BorrowMut;
 use borsh::BorshDeserialize;
 use solana_program::{account_info::AccountInfo, program::{invoke, invoke_signed}, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey};
 
-use crate::{loaders::load_signer, Escrow};
+use crate::Escrow;
 
 #[inline]
 pub fn process_take_instruction(accounts: &[AccountInfo<'_>], _instruction_data: &[u8]) -> Result<(), ProgramError> {
@@ -12,7 +12,9 @@ pub fn process_take_instruction(accounts: &[AccountInfo<'_>], _instruction_data:
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-    load_signer(taker)?;
+    if !taker.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
 
     let escrow_data = Escrow::try_from_slice(&escrow.try_borrow_mut_data()?)?;
     let escrow_pda = Pubkey::find_program_address(&[b"escrow", maker.key.as_ref(), escrow_data.seed.to_le_bytes().as_ref()], &crate::ID);
