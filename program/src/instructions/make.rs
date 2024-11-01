@@ -27,7 +27,6 @@ use crate::{
     ID
 };
 
-#[inline]
 pub fn process_make_instruction(accounts: &[AccountInfo], instruction_data: &[u8]) -> Result<(), ProgramError> {
     let [maker, escrow, mint_a, mint_b, maker_ata, vault, token_program, _system_program] =
         accounts
@@ -35,12 +34,8 @@ pub fn process_make_instruction(accounts: &[AccountInfo], instruction_data: &[u8
         return Err(ProgramError::NotEnoughAccountKeys);
     };
 
-    //let data = bytemuck::try_pod_read_unaligned::<Escrow>(instruction_data).map_err(|_| ProgramError::InvalidInstructionData)?;
-    //let seed = u64::try_from_slice(&instruction_data[..SEED_OFFSET])?;
-    let seed: u64 = bytemuck::try_pod_read_unaligned::<u64>(&instruction_data[..SEED_OFFSET]).map_err(|_| ProgramError::InvalidInstructionData)?;
-    //let amount = u64::try_from_slice(&instruction_data[SEED_OFFSET..AMOUNT_OFFSET])?;
-    let amount = bytemuck::try_pod_read_unaligned::<u64>(&instruction_data[SEED_OFFSET..AMOUNT_OFFSET]).map_err(|_| ProgramError::InvalidInstructionData)?;
-
+    let seed = u64::try_from_slice(&instruction_data[..SEED_OFFSET])?;
+    let amount = u64::try_from_slice(&instruction_data[SEED_OFFSET..AMOUNT_OFFSET])?;
     let escrow_pda = Pubkey::find_program_address(&[b"escrow", maker.key.as_ref(), seed.to_le_bytes().as_ref()], &ID);
 
     load_signer(maker)?;

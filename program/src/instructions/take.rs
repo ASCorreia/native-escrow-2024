@@ -14,8 +14,7 @@ pub fn process_take_instruction(accounts: &[AccountInfo<'_>], _instruction_data:
 
     load_signer(taker)?;
 
-    //let escrow_data = Escrow::try_from_slice(&escrow.try_borrow_mut_data()?)?;
-    let escrow_data = bytemuck::try_pod_read_unaligned::<Escrow>(escrow.try_borrow_mut_data()?.as_ref()).map_err(|_| ProgramError::InvalidInstructionData)?;
+    let escrow_data = Escrow::try_from_slice(&escrow.try_borrow_mut_data()?)?;
     let escrow_pda = Pubkey::find_program_address(&[b"escrow", maker.key.as_ref(), escrow_data.seed.to_le_bytes().as_ref()], &crate::ID);
 
     if escrow.key.ne(&escrow_pda.0) {
